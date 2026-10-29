@@ -67,4 +67,4 @@ Profiles are stored in `profiles.json` and are not automatically shared with oth
 
 ## License
 
-This repository currently does not include a `LICENSE` file. Terms for reusing, modifying, or redistributing the source code have not been specified.
+This project is licensed under the MIT License. When using, modifying, or redistributing the software, include the copyright notice and license text from [`LICENSE`](LICENSE).
