@@ -1,0 +1,123 @@
+<Window x:Class="IPSwitcher.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="IP Switcher" Height="720" Width="900" MinHeight="650" MinWidth="800"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource WindowBackgroundBrush}">
+    <Window.Resources>
+        <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FFF5F7FA"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#FF202938"/>
+        <SolidColorBrush x:Key="MutedTextBrush" Color="#FF687386"/>
+        <SolidColorBrush x:Key="InputBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="InputBorderBrush" Color="#FFD1D8E0"/>
+        <SolidColorBrush x:Key="ButtonBrush" Color="#FFE8EDF3"/>
+        <SolidColorBrush x:Key="StatusBrush" Color="#FFE9EEF4"/>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource InputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource InputBrush}"/>
+        </Style>
+        <Style TargetType="ListBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource InputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource ButtonBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+            <Setter Property="Padding" Value="8,4"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="IP Switcher" FontSize="26" FontWeight="Bold"/>
+                <TextBlock Text="Windows ネットワーク設定切替ツール" Foreground="{DynamicResource MutedTextBrush}" Margin="0,4,0,0"/>
+            </StackPanel>
+            <Button x:Name="ThemeToggleButton" Content="🌙 ダーク" HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Padding="12,7" Click="ThemeToggle_Click" ToolTip="ライト／ダーク表示を切り替え"/>
+        </Grid>
+
+        <GroupBox Grid.Row="1" Header="ネットワークアダプター" Padding="10" Margin="0,0,0,12">
+            <DockPanel>
+                <Button Content="更新" DockPanel.Dock="Right" Width="90" Margin="10,0,0,0" Click="RefreshAdapters_Click"/>
+                <ComboBox x:Name="AdapterCombo" DisplayMemberPath="Name" Height="30"
+                        VerticalContentAlignment="Center"
+                        Foreground="#FF000000" Background="#FFFFFFFF"/>
+            </DockPanel>
+        </GroupBox>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+
+            <GroupBox Header="IP設定" Padding="14" Margin="0,0,12,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <CheckBox x:Name="DhcpCheck" Content="DHCP（IPアドレスを自動取得）を使用" Margin="0,0,0,14"
+                                  Checked="DhcpCheck_Changed" Unchecked="DhcpCheck_Changed"/>
+                        <TextBlock Text="IPアドレス"/>
+                        <TextBox x:Name="IpBox" Margin="0,4,0,12" Height="30" Padding="6"/>
+                        <TextBlock Text="サブネットマスク"/>
+                        <TextBox x:Name="MaskBox" Text="255.255.255.0" Margin="0,4,0,12" Height="30" Padding="6"/>
+                        <Button x:Name="AdvancedToggleButton" Content="＋ 詳細設定（ゲートウェイ・DNS）" HorizontalAlignment="Left"
+                                Margin="0,0,0,10" Padding="2,4" Background="Transparent" BorderThickness="0"
+                                Click="AdvancedToggle_Click"/>
+                        <StackPanel x:Name="AdvancedFieldsPanel" Visibility="Collapsed">
+                            <TextBlock Text="デフォルトゲートウェイ（任意）"/>
+                            <TextBox x:Name="GatewayBox" Margin="0,4,0,12" Height="30" Padding="6"/>
+                            <TextBlock Text="優先DNS（任意）"/>
+                            <TextBox x:Name="Dns1Box" Margin="0,4,0,12" Height="30" Padding="6"/>
+                            <TextBlock Text="代替DNS（任意）"/>
+                            <TextBox x:Name="Dns2Box" Margin="0,4,0,12" Height="30" Padding="6"/>
+                        </StackPanel>
+                        <TextBlock Text="プロファイル名"/>
+                        <TextBox x:Name="ProfileNameBox" Margin="0,4,0,12" Height="30" Padding="6"/>
+                        <WrapPanel>
+                            <Button Content="現在の入力を保存" Padding="12,7" Margin="0,0,8,8" Click="SaveProfile_Click"/>
+                            <Button Content="選択プロファイルを削除" Padding="12,7" Margin="0,0,8,8" Click="DeleteProfile_Click"/>
+                        </WrapPanel>
+                        <Button Content="ネットワーク設定を反映" Height="42" FontWeight="Bold" Margin="0,8,0,0"
+                                Click="Apply_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </GroupBox>
+
+            <GroupBox Grid.Column="1" Header="保存済みプロファイル" Padding="12">
+                <DockPanel>
+                    <Button DockPanel.Dock="Bottom" Content="選択した設定を呼び出す" Height="38" Margin="0,10,0,0"
+                            Click="LoadProfile_Click"/>
+                    <ListBox x:Name="ProfilesList" DisplayMemberPath="Name" SelectionChanged="ProfilesList_SelectionChanged"/>
+                </DockPanel>
+            </GroupBox>
+        </Grid>
+
+        <Border Grid.Row="3" Background="{DynamicResource StatusBrush}" CornerRadius="6" Padding="10" Margin="0,12,0,0">
+            <TextBlock x:Name="StatusText" Text="準備完了。対象アダプターを確認してから操作してください。" TextWrapping="Wrap"/>
+        </Border>
+    </Grid>
+</Window>
