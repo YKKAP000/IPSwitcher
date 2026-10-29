@@ -16,16 +16,24 @@ public partial class MainWindow : Window
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "IPSwitcher");
     private string ProfilesPath => Path.Combine(_dataDirectory, "profiles.json");
     private string ThemePath => Path.Combine(_dataDirectory, "theme.txt");
+    private string LanguagePath => Path.Combine(_dataDirectory, "language.txt");
     private List<IpProfile> _profiles = new();
+    private string _language = "ja";
+    private bool _isDarkTheme;
+    private bool _isInitializing = true;
 
     public MainWindow()
     {
         InitializeComponent();
         Directory.CreateDirectory(_dataDirectory);
+        _language = LoadLanguagePreference();
+        ApplyLanguage();
+        LanguageCombo.SelectedIndex = _language == "en" ? 1 : 0;
         ApplyTheme(LoadDarkThemePreference(), savePreference: false);
         LoadProfilesFromDisk();
         RefreshAdapters();
         UpdateDhcpFields();
+        _isInitializing = false;
     }
 
     private void RefreshAdapters_Click(object sender, RoutedEventArgs e) => RefreshAdapters();
@@ -64,17 +72,16 @@ public partial class MainWindow : Window
                 AdapterCombo.SelectedItem = selected ?? items[0];
             }
 
-            StatusText.Text =
-                $"アダプターを {items.Count} 件取得しました。";
+            StatusText.Text = T($"アダプターを {items.Count} 件取得しました。", $"Found {items.Count} network adapter(s).");
         }
         catch (Exception ex)
         {
-            StatusText.Text = "アダプター取得エラー: " + ex.Message;
+            StatusText.Text = T("アダプター取得エラー: ", "Adapter error: ") + ex.Message;
 
             MessageBox.Show(
-                "ネットワークアダプターの取得に失敗しました。\n" +
+                T("ネットワークアダプターの取得に失敗しました。\n", "Failed to retrieve network adapters.\n") +
                 ex.Message,
-                "アダプター取得エラー",
+                T("アダプター取得エラー", "Adapter error"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -109,12 +116,74 @@ public partial class MainWindow : Window
         bool expand = AdvancedFieldsPanel.Visibility != Visibility.Visible;
         AdvancedFieldsPanel.Visibility = expand ? Visibility.Visible : Visibility.Collapsed;
         AdvancedToggleButton.Content = expand
-            ? "− 詳細設定（ゲートウェイ・DNS）"
-            : "＋ 詳細設定（ゲートウェイ・DNS）";
+            ? T("− 詳細設定（ゲートウェイ・DNS）", "− Advanced settings (gateway and DNS)")
+            : T("＋ 詳細設定（ゲートウェイ・DNS）", "+ Advanced settings (gateway and DNS)");
+    }
+
+    private void LanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isInitializing || LanguageCombo.SelectedItem is not ComboBoxItem item || item.Tag is not string language)
+            return;
+
+        _language = language;
+        ApplyLanguage();
+        try
+        {
+            Directory.CreateDirectory(_dataDirectory);
+            File.WriteAllText(LanguagePath, _language);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = T("言語設定を保存できませんでした: ", "Could not save language preference: ") + ex.Message;
+        }
+    }
+
+    private string LoadLanguagePreference()
+    {
+        try
+        {
+            return File.Exists(LanguagePath) &&
+                   string.Equals(File.ReadAllText(LanguagePath).Trim(), "en", StringComparison.OrdinalIgnoreCase)
+                ? "en"
+                : "ja";
+        }
+        catch
+        {
+            return "ja";
+        }
+    }
+
+    private string T(string japanese, string english) => _language == "en" ? english : japanese;
+
+    private void ApplyLanguage()
+    {
+        Title = "IP Switcher";
+        SubtitleText.Text = T("Windows ネットワーク設定切替ツール", "Windows network settings switcher");
+        AdapterGroup.Header = T("ネットワークアダプター", "Network adapter");
+        RefreshButton.Content = T("更新", "Refresh");
+        IpSettingsGroup.Header = T("IP設定", "IP settings");
+        DhcpCheck.Content = T("DHCP（IPアドレスを自動取得）を使用", "Use DHCP (obtain an IP address automatically)");
+        IpLabel.Text = T("IPアドレス", "IP address");
+        MaskLabel.Text = T("サブネットマスク", "Subnet mask");
+        GatewayLabel.Text = T("デフォルトゲートウェイ（任意）", "Default gateway (optional)");
+        Dns1Label.Text = T("優先DNS（任意）", "Preferred DNS (optional)");
+        Dns2Label.Text = T("代替DNS（任意）", "Alternate DNS (optional)");
+        AdvancedToggleButton.Content = AdvancedFieldsPanel.Visibility == Visibility.Visible
+            ? T("− 詳細設定（ゲートウェイ・DNS）", "− Advanced settings (gateway and DNS)")
+            : T("＋ 詳細設定（ゲートウェイ・DNS）", "+ Advanced settings (gateway and DNS)");
+        ProfileNameLabel.Text = T("プロファイル名", "Profile name");
+        SaveProfileButton.Content = T("現在の入力を保存", "Save current settings");
+        DeleteProfileButton.Content = T("選択プロファイルを削除", "Delete selected profile");
+        ApplyButton.Content = T("ネットワーク設定を反映", "Apply network settings");
+        ProfilesGroup.Header = T("保存済みプロファイル", "Saved profiles");
+        LoadProfileButton.Content = T("選択した設定を呼び出す", "Load selected profile");
+        ThemeToggleButton.Content = _isDarkTheme ? T("☀ ライト", "☀ Light") : T("🌙 ダーク", "🌙 Dark");
+        ThemeToggleButton.ToolTip = T("ライト／ダーク表示を切り替え", "Switch between light and dark themes");
+        StatusText.Text = T("準備完了。対象アダプターを確認してから操作してください。", "Ready. Check the target adapter before making changes.");
     }
 
     private void ThemeToggle_Click(object sender, RoutedEventArgs e) =>
-        ApplyTheme(!LoadDarkThemePreference(), savePreference: true);
+        ApplyTheme(!_isDarkTheme, savePreference: true);
 
     private bool LoadDarkThemePreference()
     {
@@ -131,6 +200,7 @@ public partial class MainWindow : Window
 
     private void ApplyTheme(bool dark, bool savePreference)
     {
+        _isDarkTheme = dark;
         SetBrush("WindowBackgroundBrush", dark ? "#FF171B22" : "#FFF5F7FA");
         SetBrush("SurfaceBrush", dark ? "#FF222832" : "#FFFFFFFF");
         SetBrush("TextBrush", dark ? "#FFF1F4F8" : "#FF202938");
@@ -139,7 +209,7 @@ public partial class MainWindow : Window
         SetBrush("InputBorderBrush", dark ? "#FF4A5565" : "#FFD1D8E0");
         SetBrush("ButtonBrush", dark ? "#FF343D4B" : "#FFE8EDF3");
         SetBrush("StatusBrush", dark ? "#FF252D38" : "#FFE9EEF4");
-        ThemeToggleButton.Content = dark ? "☀ ライト" : "🌙 ダーク";
+        ThemeToggleButton.Content = dark ? T("☀ ライト", "☀ Light") : T("🌙 ダーク", "🌙 Dark");
         if (savePreference)
         {
             try
@@ -149,7 +219,7 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                StatusText.Text = "テーマ設定を保存できませんでした: " + ex.Message;
+                StatusText.Text = T("テーマ設定を保存できませんでした: ", "Could not save theme preference: ") + ex.Message;
             }
         }
     }
@@ -170,13 +240,13 @@ public partial class MainWindow : Window
     {
         if (AdapterCombo.SelectedItem is not NetworkAdapter adapter)
         {
-            MessageBox.Show("ネットワークアダプターを選択してください。");
+            MessageBox.Show(T("ネットワークアダプターを選択してください。", "Select a network adapter."));
             return;
         }
         string name = ProfileNameBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            MessageBox.Show("プロファイル名を入力してください。");
+            MessageBox.Show(T("プロファイル名を入力してください。", "Enter a profile name."));
             return;
         }
 
@@ -185,7 +255,7 @@ public partial class MainWindow : Window
         _profiles.Add(profile);
         SaveProfilesToDisk();
         RefreshProfileList(name);
-        StatusText.Text = $"プロファイル「{name}」を保存しました。";
+        StatusText.Text = T($"プロファイル「{name}」を保存しました。", $"Profile '{name}' was saved.");
     }
 
     private IpProfile ReadForm(string adapterName, string name) => new()
@@ -214,7 +284,8 @@ public partial class MainWindow : Window
         if (AdapterCombo.ItemsSource is IEnumerable<NetworkAdapter> adapters)
             AdapterCombo.SelectedItem = adapters.FirstOrDefault(a => a.Name == p.AdapterName) ?? AdapterCombo.SelectedItem;
 
-        StatusText.Text = $"プロファイル「{p.Name}」を入力欄に読み込みました。まだネットワーク設定は変更されていません。";
+        StatusText.Text = T($"プロファイル「{p.Name}」を入力欄に読み込みました。まだネットワーク設定は変更されていません。",
+            $"Profile '{p.Name}' was loaded into the form. Network settings have not been changed yet.");
     }
 
     private void ProfilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -226,19 +297,20 @@ public partial class MainWindow : Window
     private void DeleteProfile_Click(object sender, RoutedEventArgs e)
     {
         if (ProfilesList.SelectedItem is not IpProfile p) return;
-        if (MessageBox.Show($"「{p.Name}」を削除しますか？", "確認", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+        if (MessageBox.Show(T($"「{p.Name}」を削除しますか？", $"Delete '{p.Name}'?"),
+            T("確認", "Confirm"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
         _profiles.Remove(p);
         SaveProfilesToDisk();
         RefreshProfileList();
-        StatusText.Text = $"プロファイル「{p.Name}」を削除しました。";
+        StatusText.Text = T($"プロファイル「{p.Name}」を削除しました。", $"Profile '{p.Name}' was deleted.");
     }
 
     private async void Apply_Click(object sender, RoutedEventArgs e)
     {
         if (AdapterCombo.SelectedItem is not NetworkAdapter adapter)
         {
-            MessageBox.Show("ネットワークアダプターを選択してください。");
+            MessageBox.Show(T("ネットワークアダプターを選択してください。", "Select a network adapter."));
             return;
         }
 
@@ -246,38 +318,42 @@ public partial class MainWindow : Window
         if (!dhcp && (!TryParseIPv4(IpBox.Text, out _) || !TryParseIPv4(MaskBox.Text, out var maskAddress) ||
                       !TryMaskToPrefix(maskAddress, out _)))
         {
-            MessageBox.Show("IPアドレスまたはサブネットマスクが正しくありません。");
+            MessageBox.Show(T("IPアドレスまたはサブネットマスクが正しくありません。", "The IP address or subnet mask is invalid."));
             return;
         }
 
         if (!OptionalIPv4Valid(GatewayBox.Text) || !OptionalIPv4Valid(Dns1Box.Text) || !OptionalIPv4Valid(Dns2Box.Text))
         {
-            MessageBox.Show("ゲートウェイまたはDNSのIPアドレスが正しくありません。");
+            MessageBox.Show(T("ゲートウェイまたはDNSのIPアドレスが正しくありません。", "The gateway or DNS IP address is invalid."));
             return;
         }
 
         string summary = dhcp
-            ? $"アダプター: {adapter.Name}\nIPアドレス: DHCP（自動取得）\nDNS: {(string.IsNullOrWhiteSpace(Dns1Box.Text) ? "自動" : Dns1Box.Text)}"
-            : $"アダプター: {adapter.Name}\nIP: {IpBox.Text}\nマスク: {MaskBox.Text}\nゲートウェイ: {(string.IsNullOrWhiteSpace(GatewayBox.Text) ? "なし" : GatewayBox.Text)}\nDNS: {(string.IsNullOrWhiteSpace(Dns1Box.Text) ? "自動/未指定" : Dns1Box.Text)}";
+            ? T($"アダプター: {adapter.Name}\nIPアドレス: DHCP（自動取得）\nDNS: {(string.IsNullOrWhiteSpace(Dns1Box.Text) ? "自動" : Dns1Box.Text)}",
+                $"Adapter: {adapter.Name}\nIP address: DHCP (automatic)\nDNS: {(string.IsNullOrWhiteSpace(Dns1Box.Text) ? "Automatic" : Dns1Box.Text)}")
+            : T($"アダプター: {adapter.Name}\nIP: {IpBox.Text}\nマスク: {MaskBox.Text}\nゲートウェイ: {(string.IsNullOrWhiteSpace(GatewayBox.Text) ? "なし" : GatewayBox.Text)}\nDNS: {(string.IsNullOrWhiteSpace(Dns1Box.Text) ? "自動/未指定" : Dns1Box.Text)}",
+                $"Adapter: {adapter.Name}\nIP address: {IpBox.Text}\nSubnet mask: {MaskBox.Text}\nGateway: {(string.IsNullOrWhiteSpace(GatewayBox.Text) ? "None" : GatewayBox.Text)}\nDNS: {(string.IsNullOrWhiteSpace(Dns1Box.Text) ? "Automatic/not set" : Dns1Box.Text)}");
 
-        if (MessageBox.Show(summary + "\n\nネットワーク通信が一時的に切断される場合があります。\n設定を反映しますか？",
-            "ネットワーク設定の変更", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(summary + T("\n\nネットワーク通信が一時的に切断される場合があります。\n設定を反映しますか？",
+                "\n\nNetwork connectivity may be temporarily interrupted.\nApply these settings?"),
+            T("ネットワーク設定の変更", "Change network settings"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
 
         try
         {
             IsEnabled = false;
-            StatusText.Text = "設定を反映しています...";
+            StatusText.Text = T("設定を反映しています...", "Applying settings...");
             string script = BuildApplyScript(adapter.InterfaceIndex, dhcp, IpBox.Text.Trim(), MaskBox.Text.Trim(),
-                GatewayBox.Text.Trim(), Dns1Box.Text.Trim(), Dns2Box.Text.Trim());
+                GatewayBox.Text.Trim(), Dns1Box.Text.Trim(), Dns2Box.Text.Trim(), _language == "en");
             string result = await Task.Run(() => RunPowerShell(script));
-            StatusText.Text = "設定の反映が完了しました。";
-            MessageBox.Show("設定変更コマンドが完了しました。Windowsの設定画面でも結果を確認してください。",
-                "処理完了", MessageBoxButton.OK, MessageBoxImage.Information);
+            StatusText.Text = T("設定の反映が完了しました。", "Settings were applied.");
+            MessageBox.Show(T("設定変更コマンドが完了しました。Windowsの設定画面でも結果を確認してください。",
+                "The settings command completed. Verify the result in Windows Settings."),
+                T("処理完了", "Completed"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            StatusText.Text = "設定変更エラー: " + ex.Message;
-            MessageBox.Show(ex.Message, "設定変更エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText.Text = T("設定変更エラー: ", "Apply error: ") + ex.Message;
+            MessageBox.Show(ex.Message, T("設定変更エラー", "Apply error"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -285,13 +361,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private static string BuildApplyScript(int ifIndex, bool dhcp, string ip, string mask, string gateway, string dns1, string dns2)
+    private static string BuildApplyScript(int ifIndex, bool dhcp, string ip, string mask, string gateway, string dns1, string dns2, bool english)
     {
         // Inputs are validated as IPv4 values before they reach this method. Adapter selection is passed as numeric ifIndex.
         var sb = new StringBuilder();
         sb.AppendLine("$ErrorActionPreference = 'Stop'");
         sb.AppendLine($"$idx = {ifIndex}");
-        sb.AppendLine("if (-not (Get-NetAdapter -InterfaceIndex $idx -ErrorAction SilentlyContinue)) { throw 'アダプターが見つかりません。' }");
+        sb.AppendLine(english
+            ? "if (-not (Get-NetAdapter -InterfaceIndex $idx -ErrorAction SilentlyContinue)) { throw 'Network adapter not found.' }"
+            : "if (-not (Get-NetAdapter -InterfaceIndex $idx -ErrorAction SilentlyContinue)) { throw 'アダプターが見つかりません。' }");
 
         if (dhcp)
         {
@@ -332,7 +410,7 @@ public partial class MainWindow : Window
         return sb.ToString();
     }
 
-    private static string RunPowerShell(string script)
+    private string RunPowerShell(string script)
     {
         string encoded = Convert.ToBase64String(
             Encoding.Unicode.GetBytes(script));
@@ -352,7 +430,7 @@ public partial class MainWindow : Window
 
         using var process = Process.Start(psi)
             ?? throw new InvalidOperationException(
-                "PowerShellを起動できませんでした。");
+                T("PowerShellを起動できませんでした。", "Could not start PowerShell."));
 
         // 標準出力と標準エラーを並行して読み取る
         Task<string> stdoutTask =
@@ -375,7 +453,7 @@ public partial class MainWindow : Window
             }
 
             throw new TimeoutException(
-                "PowerShellの処理が60秒以内に終了しませんでした。");
+                T("PowerShellの処理が60秒以内に終了しませんでした。", "PowerShell did not finish within 60 seconds."));
         }
 
         // 出力の読み取り完了を待つ
@@ -435,7 +513,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show("プロファイルを読み込めませんでした: " + ex.Message);
+            MessageBox.Show(T("プロファイルを読み込めませんでした: ", "Could not load profiles: ") + ex.Message);
             _profiles = new();
         }
         RefreshProfileList();

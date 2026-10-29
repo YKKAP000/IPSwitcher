@@ -12,6 +12,7 @@
         <SolidColorBrush x:Key="InputBorderBrush" Color="#FFD1D8E0"/>
         <SolidColorBrush x:Key="ButtonBrush" Color="#FFE8EDF3"/>
         <SolidColorBrush x:Key="StatusBrush" Color="#FFE9EEF4"/>
+
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         </Style>
@@ -28,6 +29,105 @@
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             <Setter Property="Background" Value="{DynamicResource InputBrush}"/>
         </Style>
+
+        <!-- 言語選択リストの項目もテーマ配色にする -->
+        <Style x:Key="ThemeComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource ButtonBrush}"/>
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource InputBorderBrush}"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource InputBorderBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 言語選択欄をテーマ切り替えボタンと同じ配色で表示 -->
+        <Style x:Key="ThemeSelectorComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource ButtonBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="ComboBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="2"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="24"/>
+                                </Grid.ColumnDefinitions>
+
+                                <ContentPresenter Grid.Column="0"
+                                                  Margin="{TemplateBinding Padding}"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left"
+                                                  IsHitTestVisible="False"
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                  TextElement.Foreground="{TemplateBinding Foreground}"/>
+
+                                <ToggleButton Grid.Column="1"
+                                              Focusable="False"
+                                              ClickMode="Press"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                              Background="Transparent"
+                                              BorderThickness="0">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border Background="{TemplateBinding Background}">
+                                                <Path Width="8" Height="4" Stretch="Fill"
+                                                      Data="M 0,0 L 4,4 L 8,0 Z"
+                                                      Fill="{DynamicResource TextBrush}"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+                            </Grid>
+
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Fade">
+                                <Border Background="{DynamicResource ButtonBrush}"
+                                        BorderBrush="{DynamicResource InputBorderBrush}"
+                                        BorderThickness="1"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <ScrollViewer CanContentScroll="True">
+                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ComboBorder" Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="ComboBorder"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource TextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="ListBox">
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             <Setter Property="Background" Value="{DynamicResource InputBrush}"/>
@@ -43,6 +143,7 @@
             <Setter Property="Padding" Value="8,4"/>
         </Style>
     </Window.Resources>
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -53,19 +154,52 @@
 
         <Grid Grid.Row="0" Margin="0,0,0,14">
             <StackPanel>
-                <TextBlock Text="IP Switcher" FontSize="26" FontWeight="Bold"/>
-                <TextBlock Text="Windows ネットワーク設定切替ツール" Foreground="{DynamicResource MutedTextBrush}" Margin="0,4,0,0"/>
+                <TextBlock x:Name="TitleText" Text="IP Switcher" FontSize="26" FontWeight="Bold"/>
+                <TextBlock x:Name="SubtitleText"
+                           Text="Windows ネットワーク設定切替ツール"
+                           Foreground="{DynamicResource MutedTextBrush}"
+                           Margin="0,4,0,0"/>
             </StackPanel>
-            <Button x:Name="ThemeToggleButton" Content="🌙 ダーク" HorizontalAlignment="Right" VerticalAlignment="Center"
-                    Padding="12,7" Click="ThemeToggle_Click" ToolTip="ライト／ダーク表示を切り替え"/>
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center">
+                <ComboBox x:Name="LanguageCombo"
+                          Width="105"
+                          Height="32"
+                          Margin="0,0,8,0"
+                          VerticalContentAlignment="Center"
+                          Style="{StaticResource ThemeSelectorComboBoxStyle}"
+                          ItemContainerStyle="{StaticResource ThemeComboBoxItemStyle}"
+                          SelectionChanged="LanguageCombo_SelectionChanged">
+                    <ComboBoxItem Content="日本語" Tag="ja"/>
+                    <ComboBoxItem Content="English" Tag="en"/>
+                </ComboBox>
+                <Button x:Name="ThemeToggleButton"
+                        Content="🌙 ダーク"
+                        Padding="12,7"
+                        Click="ThemeToggle_Click"
+                        ToolTip="ライト／ダーク表示を切り替え"/>
+            </StackPanel>
         </Grid>
 
-        <GroupBox Grid.Row="1" Header="ネットワークアダプター" Padding="10" Margin="0,0,0,12">
+        <GroupBox x:Name="AdapterGroup"
+                  Grid.Row="1"
+                  Header="ネットワークアダプター"
+                  Padding="10"
+                  Margin="0,0,0,12">
             <DockPanel>
-                <Button Content="更新" DockPanel.Dock="Right" Width="90" Margin="10,0,0,0" Click="RefreshAdapters_Click"/>
-                <ComboBox x:Name="AdapterCombo" DisplayMemberPath="Name" Height="30"
-                        VerticalContentAlignment="Center"
-                        Foreground="#FF000000" Background="#FFFFFFFF"/>
+                <Button x:Name="RefreshButton"
+                        Content="更新"
+                        DockPanel.Dock="Right"
+                        Width="90"
+                        Margin="10,0,0,0"
+                        Click="RefreshAdapters_Click"/>
+                <ComboBox x:Name="AdapterCombo"
+                          DisplayMemberPath="Name"
+                          Height="30"
+                          VerticalContentAlignment="Center"
+                          Foreground="#FF000000"
+                          Background="#FFFFFFFF"/>
             </DockPanel>
         </GroupBox>
 
@@ -75,49 +209,116 @@
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
-            <GroupBox Header="IP設定" Padding="14" Margin="0,0,12,0">
+            <GroupBox x:Name="IpSettingsGroup"
+                      Header="IP設定"
+                      Padding="14"
+                      Margin="0,0,12,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <CheckBox x:Name="DhcpCheck" Content="DHCP（IPアドレスを自動取得）を使用" Margin="0,0,0,14"
-                                  Checked="DhcpCheck_Changed" Unchecked="DhcpCheck_Changed"/>
-                        <TextBlock Text="IPアドレス"/>
-                        <TextBox x:Name="IpBox" Margin="0,4,0,12" Height="30" Padding="6"/>
-                        <TextBlock Text="サブネットマスク"/>
-                        <TextBox x:Name="MaskBox" Text="255.255.255.0" Margin="0,4,0,12" Height="30" Padding="6"/>
-                        <Button x:Name="AdvancedToggleButton" Content="＋ 詳細設定（ゲートウェイ・DNS）" HorizontalAlignment="Left"
-                                Margin="0,0,0,10" Padding="2,4" Background="Transparent" BorderThickness="0"
+                        <CheckBox x:Name="DhcpCheck"
+                                  Content="DHCP（IPアドレスを自動取得）を使用"
+                                  Margin="0,0,0,14"
+                                  Checked="DhcpCheck_Changed"
+                                  Unchecked="DhcpCheck_Changed"/>
+
+                        <TextBlock x:Name="IpLabel" Text="IPアドレス"/>
+                        <TextBox x:Name="IpBox"
+                                 Margin="0,4,0,12"
+                                 Height="30"
+                                 Padding="6"/>
+
+                        <TextBlock x:Name="MaskLabel" Text="サブネットマスク"/>
+                        <TextBox x:Name="MaskBox"
+                                 Text="255.255.255.0"
+                                 Margin="0,4,0,12"
+                                 Height="30"
+                                 Padding="6"/>
+
+                        <Button x:Name="AdvancedToggleButton"
+                                Content="＋ 詳細設定（ゲートウェイ・DNS）"
+                                HorizontalAlignment="Left"
+                                Margin="0,0,0,10"
+                                Padding="2,4"
+                                Background="Transparent"
+                                BorderThickness="0"
                                 Click="AdvancedToggle_Click"/>
+
                         <StackPanel x:Name="AdvancedFieldsPanel" Visibility="Collapsed">
-                            <TextBlock Text="デフォルトゲートウェイ（任意）"/>
-                            <TextBox x:Name="GatewayBox" Margin="0,4,0,12" Height="30" Padding="6"/>
-                            <TextBlock Text="優先DNS（任意）"/>
-                            <TextBox x:Name="Dns1Box" Margin="0,4,0,12" Height="30" Padding="6"/>
-                            <TextBlock Text="代替DNS（任意）"/>
-                            <TextBox x:Name="Dns2Box" Margin="0,4,0,12" Height="30" Padding="6"/>
+                            <TextBlock x:Name="GatewayLabel"
+                                       Text="デフォルトゲートウェイ（任意）"/>
+                            <TextBox x:Name="GatewayBox"
+                                     Margin="0,4,0,12"
+                                     Height="30"
+                                     Padding="6"/>
+
+                            <TextBlock x:Name="Dns1Label" Text="優先DNS（任意）"/>
+                            <TextBox x:Name="Dns1Box"
+                                     Margin="0,4,0,12"
+                                     Height="30"
+                                     Padding="6"/>
+
+                            <TextBlock x:Name="Dns2Label" Text="代替DNS（任意）"/>
+                            <TextBox x:Name="Dns2Box"
+                                     Margin="0,4,0,12"
+                                     Height="30"
+                                     Padding="6"/>
                         </StackPanel>
-                        <TextBlock Text="プロファイル名"/>
-                        <TextBox x:Name="ProfileNameBox" Margin="0,4,0,12" Height="30" Padding="6"/>
+
+                        <TextBlock x:Name="ProfileNameLabel" Text="プロファイル名"/>
+                        <TextBox x:Name="ProfileNameBox"
+                                 Margin="0,4,0,12"
+                                 Height="30"
+                                 Padding="6"/>
+
                         <WrapPanel>
-                            <Button Content="現在の入力を保存" Padding="12,7" Margin="0,0,8,8" Click="SaveProfile_Click"/>
-                            <Button Content="選択プロファイルを削除" Padding="12,7" Margin="0,0,8,8" Click="DeleteProfile_Click"/>
+                            <Button x:Name="SaveProfileButton"
+                                    Content="現在の入力を保存"
+                                    Padding="12,7"
+                                    Margin="0,0,8,8"
+                                    Click="SaveProfile_Click"/>
+                            <Button x:Name="DeleteProfileButton"
+                                    Content="選択プロファイルを削除"
+                                    Padding="12,7"
+                                    Margin="0,0,8,8"
+                                    Click="DeleteProfile_Click"/>
                         </WrapPanel>
-                        <Button Content="ネットワーク設定を反映" Height="42" FontWeight="Bold" Margin="0,8,0,0"
+
+                        <Button x:Name="ApplyButton"
+                                Content="ネットワーク設定を反映"
+                                Height="42"
+                                FontWeight="Bold"
+                                Margin="0,8,0,0"
                                 Click="Apply_Click"/>
                     </StackPanel>
                 </ScrollViewer>
             </GroupBox>
 
-            <GroupBox Grid.Column="1" Header="保存済みプロファイル" Padding="12">
+            <GroupBox x:Name="ProfilesGroup"
+                      Grid.Column="1"
+                      Header="保存済みプロファイル"
+                      Padding="12">
                 <DockPanel>
-                    <Button DockPanel.Dock="Bottom" Content="選択した設定を呼び出す" Height="38" Margin="0,10,0,0"
+                    <Button x:Name="LoadProfileButton"
+                            DockPanel.Dock="Bottom"
+                            Content="選択した設定を呼び出す"
+                            Height="38"
+                            Margin="0,10,0,0"
                             Click="LoadProfile_Click"/>
-                    <ListBox x:Name="ProfilesList" DisplayMemberPath="Name" SelectionChanged="ProfilesList_SelectionChanged"/>
+                    <ListBox x:Name="ProfilesList"
+                             DisplayMemberPath="Name"
+                             SelectionChanged="ProfilesList_SelectionChanged"/>
                 </DockPanel>
             </GroupBox>
         </Grid>
 
-        <Border Grid.Row="3" Background="{DynamicResource StatusBrush}" CornerRadius="6" Padding="10" Margin="0,12,0,0">
-            <TextBlock x:Name="StatusText" Text="準備完了。対象アダプターを確認してから操作してください。" TextWrapping="Wrap"/>
+        <Border Grid.Row="3"
+                Background="{DynamicResource StatusBrush}"
+                CornerRadius="6"
+                Padding="10"
+                Margin="0,12,0,0">
+            <TextBlock x:Name="StatusText"
+                       Text="準備完了。対象アダプターを確認してから操作してください。"
+                       TextWrapping="Wrap"/>
         </Border>
     </Grid>
 </Window>
